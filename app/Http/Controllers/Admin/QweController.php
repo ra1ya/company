@@ -4,77 +4,61 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Qwes;
-use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class QweController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index():View
+    public function index(): View
     {
-    $qwes=Qwes::all();
-    return view('admin.qwes.index')->with('qwes',$qwes);
+        return view('admin.qwes.index', ['qwes' => Qwes::query()->latest()->get()]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function create(): View
     {
         return view('admin.qwes.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
-        
-        $input = $request->all();
-        Qwes::create($input);
-        return redirect('admin/qwes')->with('flash_message', 'Qwes Addedd!');
-       
+        $validated = $request->validate([
+            'qwe' => ['required', 'string', 'max:500'],
+            'ans' => ['required', 'string', 'max:2000'],
+        ]);
+
+        Qwes::create($validated);
+
+        return redirect()->route('admin.qwes.index')->with('flash_message', 'FAQ added successfully.');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function show(string $id): View
     {
-        
-        $qwes = Qwes::find($id);
-        return view('admin.qwes.show')->with('qwes', $qwes);
+        return view('admin.qwes.show', ['qwes' => Qwes::findOrFail($id)]);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
+    public function edit(string $id): View
     {
-        $qwes = Qwes::find($id);
-        return view('admin.qwes.edit')->with('qwes', $qwes);
+        return view('admin.qwes.edit', ['qwes' => Qwes::findOrFail($id)]);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
+    public function update(Request $request, string $id): RedirectResponse
     {
-        $qwes = Qwes::find($id);
-        $input = $request->all();
-        $qwes->update($input);
-        return redirect('admin/qwes')->with('flash_message', 'qwes Updated!'); 
-    
+        $qwes = Qwes::findOrFail($id);
+        $validated = $request->validate([
+            'qwe' => ['required', 'string', 'max:500'],
+            'ans' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $qwes->update($validated);
+
+        return redirect()->route('admin.qwes.index')->with('flash_message', 'FAQ updated successfully.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
+    public function destroy(string $id): RedirectResponse
     {
-        Qwes::destroy($id);
-        return redirect('admin/qwes')->with('flash_message', 'qwes deleted!'); 
+        Qwes::findOrFail($id)->delete();
+
+        return redirect()->route('admin.qwes.index')->with('flash_message', 'FAQ deleted successfully.');
     }
 }

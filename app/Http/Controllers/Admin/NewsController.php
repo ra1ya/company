@@ -4,109 +4,80 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\News;
-use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\View\View;
 
 class NewsController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index():View
+    public function index(): View
     {
-    $news=News::all();
-    return view('admin.news.index')->with('news',$news);
+        return view('admin.news.index', ['news' => News::query()->latest()->get()]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function create(): View
     {
         return view('admin.news.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
-        
-
-        $request->validate([
-            'title' => 'required|string',
-            'img' => 'required|image|mimes:svg,png,jpg,jpeg,webp|max:2048',
-            'det' => 'required|string',
-        ]);
-        if ($request->hasFile('img')) {
-            $path = $request->file('img')->store('uploads/news', 'public');
-            $validated['img'] = $path;
-        }
-      
-    
-        News::create([
-            'title' => $request->title,
-            'img' => $path,
-            'det' => $request->det,
-        ]);
-    
-        return redirect('admin/news')->with('flash_message', 'News Added!');
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        
-        $news = News::find($id);
-        return view('admin.news.show')->with('news', $news);
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        $news = News::find($id);
-        return view('admin.news.edit')->with('news', $news);
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        
-        $news = News::findOrFail($id);
-    
         $validated = $request->validate([
-            'title' => 'required|string',
-            'img' => 'nullable|image|mimes:png,jpg,jpeg,webp,svg|max:2048',
-            'det' => 'required|string',
+            'title' => ['required', 'string', 'max:255'],
+            'img' => ['required', 'image', 'mimes:svg,png,jpg,jpeg,webp', 'max:2048'],
+            'det' => ['required', 'string', 'max:3000'],
         ]);
-    
-        // تحديث الاسم
-        $news->title = $validated['title'];
-        $news->img   =  $validated['img'];
-        $news->det   =  $validated['det'];
-        // إذا تم رفع صورة جديدة
-        if ($request->hasFile('img')) {
-            $path = $request->file('img')->store('uploads/news', 'public');
-            $news->img = $path;
-        }
-    
-        $news->save();
-    
-        return redirect('admin/news')->with('success', 'تم التحديث بنجاح');
+
+        $validated['img'] = $request->file('img')->store('uploads/news', 'public');
+        News::create($validated);
+
+        return redirect()->route('admin.news.index')->with('flash_message', 'News item added successfully.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
+    public function show(string $id): View
     {
-        News::destroy($id);
-        return redirect('admin/news')->with('flash_message', 'news deleted!'); 
+        return view('admin.news.show', ['news' => News::findOrFail($id)]);
+    }
+
+    public function edit(string $id): View
+    {
+        return view('admin.news.edit', ['news' => News::findOrFail($id)]);
+    }
+
+    public function update(Request $request, string $id): RedirectResponse
+    {
+        $news = News::findOrFail($id);
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'img' => ['nullable', 'image', 'mimes:svg,png,jpg,jpeg,webp', 'max:2048'],
+            'det' => ['required', 'string', 'max:3000'],
+        ]);
+
+        $news->title = $validated['title'];
+        $news->det = $validated['det'];
+
+        if ($request->hasFile('img')) {
+            $oldImage = $news->img;
+            $news->img = $request->file('img')->store('uploads/news', 'public');
+            if ($oldImage) {
+                Storage::disk('public')->delete($oldImage);
+            }
+        }
+
+        $news->save();
+
+        return redirect()->route('admin.news.index')->with('flash_message', 'News item updated successfully.');
+    }
+
+    public function destroy(string $id): RedirectResponse
+    {
+        $news = News::findOrFail($id);
+        if ($news->img) {
+            Storage::disk('public')->delete($news->img);
+        }
+        $news->delete();
+
+        return redirect()->route('admin.news.index')->with('flash_message', 'News item deleted successfully.');
     }
 }

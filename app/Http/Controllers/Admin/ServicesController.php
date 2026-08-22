@@ -3,107 +3,78 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Contracts\View\View;
 use App\Models\Service;
-use Illuminate\Support\Carbon;
-
-
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\View\View;
 
 class ServicesController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index():View
+    public function index(): View
     {
-        $services = Service::all();
-        return view('admin.services.index')->with('services',$services);
+        return view('admin.services.index', ['services' => Service::query()->latest()->get()]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function create(): View
     {
         return view('admin.services.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string',
-            'icon' => 'required|image|mimes:svg,png,jpg,jpeg,webp|max:2048',
+            'name' => ['required', 'string', 'max:255'],
+            'icon' => ['required', 'image', 'mimes:svg,png,jpg,jpeg,webp', 'max:2048'],
         ]);
-    
-        $path = null;
-    
-        if ($request->hasFile('icon')) {
-            $path = $request->file('icon')->store('uploads/services', 'public');
-        }
-    
-        Service::create([
-            'name' => $validated['name'],
-            'icon' => $path,
-        ]);
-    
-        return redirect('admin/services')->with('flash_message', 'تمت إضافة الخدمة بنجاح!');
-    }
-    
-    
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        $services = Service::find($id);
-        return view('admin.services.show')->with('services', $services);
+
+        $validated['icon'] = $request->file('icon')->store('uploads/services', 'public');
+        Service::create($validated);
+
+        return redirect()->route('admin.services.index')->with('flash_message', 'Service added successfully.');
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
+    public function show(string $id): View
     {
-        $services = Service::find($id);
-        return view('admin.services.edit')->with('services', $services);
+        return view('admin.services.show', ['services' => Service::findOrFail($id)]);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, $id)
+    public function edit(string $id): View
+    {
+        return view('admin.services.edit', ['services' => Service::findOrFail($id)]);
+    }
+
+    public function update(Request $request, string $id): RedirectResponse
     {
         $service = Service::findOrFail($id);
-    
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'icon' => 'nullable|image|mimes:png,jpg,jpeg,webp,svg|max:2048',
+            'name' => ['required', 'string', 'max:255'],
+            'icon' => ['nullable', 'image', 'mimes:svg,png,jpg,jpeg,webp', 'max:2048'],
         ]);
-    
-        // تحديث الاسم
+
         $service->name = $validated['name'];
-    
-        // إذا تم رفع صورة جديدة
+
         if ($request->hasFile('icon')) {
-            $path = $request->file('icon')->store('uploads/services', 'public');
-            $service->icon = $path;
+            $oldIcon = $service->icon;
+            $service->icon = $request->file('icon')->store('uploads/services', 'public');
+            if ($oldIcon) {
+                Storage::disk('public')->delete($oldIcon);
+            }
         }
-    
+
         $service->save();
-    
-        return redirect('admin/services')->with('success', 'تم التحديث بنجاح');
+
+        return redirect()->route('admin.services.index')->with('flash_message', 'Service updated successfully.');
     }
-    
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
+
+    public function destroy(string $id): RedirectResponse
     {
-        Service::destroy($id);
-        return redirect('admin/services')->with('flash_message', 'services deleted!'); 
+        $service = Service::findOrFail($id);
+        if ($service->icon) {
+            Storage::disk('public')->delete($service->icon);
+        }
+        $service->delete();
+
+        return redirect()->route('admin.services.index')->with('flash_message', 'Service deleted successfully.');
     }
 }

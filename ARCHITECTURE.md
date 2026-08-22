@@ -9,20 +9,20 @@ This project is a Laravel corporate website backed by a small content management
 ```text
 Browser
   |
-  +--> GET / ----------------------------+
-  |                                      |
-  |                                  HomeController
-  |                                      |
-  |                         Eloquent models: Service, About,
-  |                         Qwes, News, Custom, Team, Say
-  |                                      |
-  |                                public Blade view
+  +--> GET / --------------------------------+
+  |                                          |
+  |                                      HomeController
+  |                                          |
+  |                             Eloquent models: Service, About,
+  |                             Qwes, News, Custom, Team, Say
+  |                                          |
+  |                                    public Blade view
   |
-  +--> POST /contact --> ContactController --> validation --> Mail
+  +--> POST /forms/contact.php --> ContactController --> validation --> Mail
   |
   +--> /admin/login --> AdminLoginRequest --> admin guard
-                                     |
-                                     +--> /admin/* CMS resources
+                                         |
+                                         +--> /admin/* CMS resources
 ```
 
 ## Authentication
@@ -41,16 +41,18 @@ The administrator area manages:
 - Team members
 - Testimonials
 
-Each resource uses validated create/update workflows. Image resources store files through Laravel's public filesystem and remove replaced/deleted files where appropriate.
+Each resource uses validated create/update workflows. Image resources store files through Laravel's public filesystem and remove replaced/deleted files where appropriate. Administrator write forms remain protected by Laravel's standard web CSRF middleware.
 
 ## Public Rendering
 
-`HomeController` composes the current public content in one place and passes it to the public home view. This keeps read-only website rendering separate from administrator write operations.
+`HomeController` composes the current public content in one place and passes it to the public `in.blade.php` view. This keeps read-only website rendering separate from administrator write operations.
 
 ## Contact Flow
 
-The public contact form posts to a Laravel controller rather than a template PHP endpoint. Input is validated, CSRF-protected by the web middleware group, throttled at the route level, and delivered with Laravel Mail using the configured mailer.
+The existing Arsha/BootstrapMade public template posts to the legacy-compatible `/forms/contact.php` path. Laravel handles that path with `ContactController`, validates all submitted fields, rate limits the endpoint, and sends the message through Laravel Mail.
+
+Because the inherited static template does not render a Laravel CSRF token in that form, this single public endpoint is explicitly exempted from CSRF verification. It does not modify authenticated application state. `SECURITY.md` documents this boundary and recommends adding a native Laravel CSRF token if the public template is redesigned later.
 
 ## Verification
 
-GitHub Actions is intended to validate that the repository remains reproducible by running dependency installation, migrations/seeding, route inspection, Blade compilation, automated tests, PHP syntax checks, and the frontend production build.
+GitHub Actions validates repository reproducibility by running dependency installation, migrations/seeding, route inspection, Blade compilation, automated tests, PHP syntax checks, and the frontend production build.

@@ -49,8 +49,8 @@ Authenticated administrators can manage website content through resource-based L
 - Old uploaded files removed when replaced or deleted
 - Admin profile updates scoped to the authenticated admin guard
 - Password updates verify the current admin password
-- CSRF-protected contact and CMS forms
-- Contact endpoint throttling
+- CSRF-protected administrator CMS forms
+- Legacy public contact action is separately validated and rate limited; its CSRF exception is documented in `SECURITY.md`
 - Automated tests and CI
 
 See [SECURITY.md](SECURITY.md) for the security posture and [ARCHITECTURE.md](ARCHITECTURE.md) for a concise architecture overview.
@@ -125,7 +125,7 @@ database/
 
 resources/views/
 ├── admin/
-└── home.blade.php
+└── in.blade.php
 
 routes/
 ├── web.php
@@ -135,6 +135,8 @@ routes/
 ## Portfolio Scope
 
 This project is intentionally presented as a **corporate website + CMS**, not as a large SaaS product. Its portfolio value is in clean Laravel structure, protected administrative workflows, dynamic content management, uploads, validation, and reproducible CI-backed setup.
+
+The public interface is based on the Arsha/BootstrapMade template and is not presented as an original frontend design. The portfolio focus is the Laravel CMS, backend workflows, data handling, authentication, and engineering cleanup.
 
 ## License
 

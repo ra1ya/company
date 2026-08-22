@@ -4,109 +4,73 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Custom;
-use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\View\View;
 
-class customController extends Controller
+class CustomController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index():View
+    public function index(): View
     {
-    $custom=Custom::all();
-    return view('admin.custom.index')->with('custom',$custom);
+        return view('admin.custom.index', ['custom' => Custom::query()->latest()->get()]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function create(): View
     {
         return view('admin.custom.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
-        
-
-        $request->validate([
-            
-            'img' => 'required|image|mimes:svg,png,jpg,jpeg,webp|max:2048',
-          
-        ]);
-        if ($request->hasFile('img')) {
-            $path = $request->file('img')->store('uploads/news', 'public');
-            $validated['img'] = $path;
-        }
-      
-    
-        Custom::create([
-            
-            'img' => $path,
-            
-        ]);
-    
-        return redirect('admin/custom')->with('flash_message', 'Custom Added!');
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        
-        $custom = Custom::find($id);
-        return view('admin.custom.show')->with('custom', $custom);
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        $custom = Custom::find($id);
-        return view('admin.custom.edit')->with('custom', $custom);
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        
-        $custom = Custom::findOrFail($id);
-    
         $validated = $request->validate([
-    
-            'img' => 'nullable|image|mimes:png,jpg,jpeg,webp,svg|max:2048',
-        
+            'img' => ['required', 'image', 'mimes:svg,png,jpg,jpeg,webp', 'max:2048'],
         ]);
-    
-        // تحديث الاسم
-        
-      //  $custom->img   =  $validated['img'];
-    
-        // إذا تم رفع صورة جديدة
-        if ($request->hasFile('img')) {
-            $path = $request->file('img')->store('uploads/news', 'public');
-            $custom->img = $path;
-        }
-    
-        $custom->save();
-    
-        return redirect('admin/custom')->with('success', 'تم التحديث بنجاح');
+
+        $validated['img'] = $request->file('img')->store('uploads/clients', 'public');
+        Custom::create($validated);
+
+        return redirect()->route('admin.custom.index')->with('flash_message', 'Client image added successfully.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
+    public function show(string $id): View
     {
-        Custom::destroy($id);
-        return redirect('admin/custom')->with('flash_message', 'custom deleted!'); 
+        return view('admin.custom.show', ['custom' => Custom::findOrFail($id)]);
+    }
+
+    public function edit(string $id): View
+    {
+        return view('admin.custom.edit', ['custom' => Custom::findOrFail($id)]);
+    }
+
+    public function update(Request $request, string $id): RedirectResponse
+    {
+        $custom = Custom::findOrFail($id);
+        $request->validate([
+            'img' => ['nullable', 'image', 'mimes:svg,png,jpg,jpeg,webp', 'max:2048'],
+        ]);
+
+        if ($request->hasFile('img')) {
+            $oldImage = $custom->img;
+            $custom->img = $request->file('img')->store('uploads/clients', 'public');
+            $custom->save();
+
+            if ($oldImage) {
+                Storage::disk('public')->delete($oldImage);
+            }
+        }
+
+        return redirect()->route('admin.custom.index')->with('flash_message', 'Client image updated successfully.');
+    }
+
+    public function destroy(string $id): RedirectResponse
+    {
+        $custom = Custom::findOrFail($id);
+        if ($custom->img) {
+            Storage::disk('public')->delete($custom->img);
+        }
+        $custom->delete();
+
+        return redirect()->route('admin.custom.index')->with('flash_message', 'Client image deleted successfully.');
     }
 }

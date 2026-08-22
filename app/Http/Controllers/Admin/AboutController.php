@@ -4,74 +4,61 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\About;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class AboutController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function index(): View
     {
-        $about = About::all();
-        return view('admin.about.index')->with('about',$about);
+        return view('admin.about.index', ['about' => About::query()->latest()->get()]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function create(): View
     {
         return view('admin.about.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
-        $input = $request->all();
-        About::create($input);
-        return redirect('admin/about')->with('flash_message', 'About Addedd!');
-       
-    }
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        $about = About::find($id);
-        return view('admin.about.show')->with('about', $about);
+        $validated = $request->validate([
+            'des_ar' => ['required', 'string', 'max:5000'],
+            'des_en' => ['required', 'string', 'max:5000'],
+        ]);
+
+        About::create($validated);
+
+        return redirect()->route('admin.about.index')->with('flash_message', 'Company profile added successfully.');
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
+    public function show(string $id): View
     {
-        $about = About::find($id);
-        return view('admin.about.edit')->with('about', $about);
+        return view('admin.about.show', ['about' => About::findOrFail($id)]);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
+    public function edit(string $id): View
     {
-        $about = About::find($id);
-        $input = $request->all();
-        $about->update($input);
-        return redirect('admin/about')->with('flash_message', 'about Updated!'); 
-    
-      
+        return view('admin.about.edit', ['about' => About::findOrFail($id)]);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
+    public function update(Request $request, string $id): RedirectResponse
     {
-        About::destroy($id);
-        return redirect('admin/about')->with('flash_message', 'about deleted!'); 
+        $about = About::findOrFail($id);
+        $validated = $request->validate([
+            'des_ar' => ['required', 'string', 'max:5000'],
+            'des_en' => ['required', 'string', 'max:5000'],
+        ]);
+
+        $about->update($validated);
+
+        return redirect()->route('admin.about.index')->with('flash_message', 'Company profile updated successfully.');
+    }
+
+    public function destroy(string $id): RedirectResponse
+    {
+        About::findOrFail($id)->delete();
+
+        return redirect()->route('admin.about.index')->with('flash_message', 'Company profile deleted successfully.');
     }
 }
